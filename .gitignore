@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────────
+#  SFIA Skills Intelligence Platform — .gitignore
+# ─────────────────────────────────────────────────────────────────
+
+# Environment — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.cover
+
+# Node / Vite
+node_modules/
+viewer/node_modules/
+viewer/dist/
+viewer/.vite/
+*.local
+
+# HuggingFace model cache (large — stored in Docker volume, not git)
+.cache/
+hf_cache/
+huggingface/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# TLS certs (never commit)
+scripts/certs/
+*.pem
+*.key
+*.crt
