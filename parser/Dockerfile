@@ -26,6 +26,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd --gid 1001 appgroup && \
     useradd --uid 1001 --gid appgroup --shell /bin/bash --create-home appuser
 
+
+# ← FIX: create the cache directory as root, then hand ownership to appuser
+#         BEFORE switching user — this ensures the volume mount point
+#         is writable when Docker mounts the named volume over it
+RUN mkdir -p /cache/huggingface && \
+    chown -R appuser:appgroup /cache
+
+
 # ── Deps: install Python packages ────────────────────────────────
 FROM base AS deps
 
@@ -43,7 +51,9 @@ FROM deps AS development
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    APP_ENV=development
+    APP_ENV=development \
+    HF_HOME=/cache/huggingface \
+    TRANSFORMERS_CACHE=/cache/huggingface
 
 USER appuser
 
@@ -64,7 +74,9 @@ COPY --chown=appuser:appgroup . .
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    APP_ENV=production
+    APP_ENV=production \
+    HF_HOME=/cache/huggingface \
+    TRANSFORMERS_CACHE=/cache/huggingface
 
 USER appuser
 

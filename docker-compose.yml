@@ -40,6 +40,7 @@ services:
       target: development
     container_name: sfia-parser
     restart: unless-stopped
+    user: "1001:1001"          # ← FIX: run as appuser from the start
     environment:
       DATABASE_URL:    postgresql://${DB_USER:-sfiauser}:${DB_PASSWORD:-sfiapass}@db:5432/${DB_NAME:-sfiadb}
       APP_ENV:         development
