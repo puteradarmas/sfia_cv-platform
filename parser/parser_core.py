@@ -1,7 +1,8 @@
 """
-NLP Pipeline — Two-stage CV processing:
-  Stage 1: JobBERT NER  →  skill entity extraction
-  Stage 2: DistilBART-MNLI  →  SFIA v9 level estimation (zero-shot)
+NLP Pipeline — Three-stage CV processing:
+  Stage 1a: dslim/bert-base-NER       → identity extraction (PER, ORG)
+  Stage 1b: jjzha/jobbert_skill_extraction → skill span extraction
+  Stage 2:  valhalla/distilbart-mnli-12-3  → SFIA v9 level estimation
 """
 
 from __future__ import annotations
@@ -14,24 +15,44 @@ from typing import Any
 import pdfplumber
 import pytesseract
 from PIL import Image
-from transformers import pipeline
+from transformers import pipeline,AutoTokenizer, AutoModelForTokenClassification
 
 from config import settings
 from sfia_reference import SFIA_SKILLS, SFIA_LEVEL_HYPOTHESES
 
 logger = logging.getLogger(__name__)
 
+def _build_ner_pipeline(model_id: str) -> Any:
+    """
+    Build a token-classification pipeline with a properly configured
+    tokenizer — handles truncation at tokenizer level, not call level.
+    """
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id,
+        model_max_length=512,
+    )
+    model = AutoModelForTokenClassification.from_pretrained(model_id)
+    return pipeline(
+        "token-classification",
+        model=model,
+        tokenizer=tokenizer,
+        aggregation_strategy="simple",
+    )
+
+
 
 class CVProcessor:
     """Loads models once and processes CVs on demand."""
 
     def __init__(self):
-        logger.info("Loading NER model: %s", settings.ner_model)
-        self.ner = pipeline(
-            "token-classification",
-            model=settings.ner_model,
-            aggregation_strategy="simple",
-        )
+
+
+        logger.info("Loading entity NER model: %s", settings.entity_model)
+        self.entity_ner = _build_ner_pipeline(settings.entity_model)
+
+        logger.info("Loading skill extraction model: %s", settings.skill_model)
+        self.skill_ner = _build_ner_pipeline(settings.skill_model)
+
         logger.info("Loading NLI model: %s", settings.nli_model)
         self.nli = pipeline(
             "zero-shot-classification",
@@ -58,84 +79,131 @@ class CVProcessor:
         return self._extract_image(file_bytes)
 
     def _extract_pdf(self, file_bytes: bytes) -> str:
-        text_parts = []
+        parts = []
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
             for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
+                text = page.extract_text()
+                if text:
+                    parts.append(text)
                 else:
-                    # Fallback: render page as image and OCR
                     img = page.to_image(resolution=200).original
-                    text_parts.append(pytesseract.image_to_string(img))
-        return "\n".join(text_parts)
+                    parts.append(pytesseract.image_to_string(img))
+        return "\n".join(parts)
 
     def _extract_image(self, file_bytes: bytes) -> str:
-        img = Image.open(io.BytesIO(file_bytes))
-        return pytesseract.image_to_string(img)
+        return pytesseract.image_to_string(Image.open(io.BytesIO(file_bytes)))
+
 
     # ── Identity extraction (regex-based) ─────────────────────────
     def _extract_identity(self, text: str) -> dict:
-        email_match = re.search(r"[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}", text)
-        phone_match = re.search(r"(\+?\d[\d\s\-().]{7,}\d)", text)
+        # Regex for email and phone — fast and reliable
+        email = re.search(r"[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}", text)
+        phone = re.search(r"(\+?\d[\d\s\-().]{7,}\d)", text)
 
-        # NER for person name — take first PER entity
+        # Use general NER (dslim/bert-base-NER) for person name
+        # Run only on first 512 tokens worth of text (top of CV)
+        full_name = None
         try:
-            entities = self.ner(text[:512])
-            names = [e["word"] for e in entities if e.get("entity_group", "").upper() == "PER"]
-            full_name = names[0] if names else None
-        except Exception:
-            full_name = None
+            # Take first ~1500 characters — name is always near the top
+            head = text[:1000]
+            # Chunk to stay within token limit
+            entities = self._run_ner(self.entity_ner, head)
+            persons = [
+                e["word"] for e in entities
+                if e.get("entity_group", "").upper() == "PER"
+                and len(e["word"].strip()) > 2
+            ]
+            print(persons)
+            if persons:
+                # Take the longest PER entity — most likely to be full name
+                full_name = max(persons, key=len)
+        except Exception as e:
+            logger.warning("Identity NER failed: %s", e)
 
         return {
             "full_name": full_name,
-            "email": email_match.group(0) if email_match else None,
-            "phone": phone_match.group(0).strip() if phone_match else None,
+            "email": email.group(0) if email else None,
+            "phone": phone.group(0).strip() if phone else None,
         }
 
     # ── Skill extraction + SFIA mapping ───────────────────────────
     def _extract_and_map_skills(self, text: str) -> list[dict]:
-        # Split into sentences for context windows
-        sentences = [s.strip() for s in re.split(r"[.\n]", text) if len(s.strip()) > 15]
+        sentences = [
+            s.strip() for s in re.split(r"[.\n]", text)
+            if len(s.strip()) > 15
+        ]
 
-        # Run NER on chunks (BERT max 512 tokens)
-        chunk_size = 400
+        # Safe word-based chunking — 300 words keeps well under 512 tokens
         words = text.split()
-        chunks = [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
+        chunks = [
+            " ".join(words[i:i + 300])
+            for i in range(0, len(words), 300)
+        ]
 
         raw_skills: set[str] = set()
         for chunk in chunks:
-            try:
-                entities = self.ner(chunk)
-                for ent in entities:
-                    if ent.get("entity_group", "").upper() == "SKILL" and len(ent["word"]) > 2:
-                        raw_skills.add(ent["word"].strip())
-            except Exception as e:
-                logger.warning("NER chunk failed: %s", e)
+            entities = self._run_ner(self.skill_ner, chunk)
+            for ent in entities:
+                label = ent.get("entity_group", "").upper()
+                word  = ent.get("word", "").strip()
+                # jobbert_skill_extraction outputs "SKILL" after aggregation
+                if label == "SKILL" and len(word) > 2:
+                    raw_skills.add(word)
 
-        # Map each extracted skill to SFIA v9 + estimate level
+        logger.info("Raw skill spans extracted: %s", raw_skills)
+
+        # Map each skill span to SFIA + estimate level
         results = []
-        for skill_word in list(raw_skills)[:15]:  # cap at 15 skills per CV
+        seen_codes: set[str] = set()
+
+        for skill_word in list(raw_skills)[:15]:
             sfia_entry = self._match_sfia_skill(skill_word)
             if not sfia_entry:
                 continue
+            # Avoid duplicate SFIA codes in one profile
+            if sfia_entry["code"] in seen_codes:
+                continue
+            seen_codes.add(sfia_entry["code"])
 
             context = self._find_context(skill_word, sentences)
             level, confidence = self._estimate_sfia_level(skill_word, context)
 
             results.append({
-                "sfia_code":       sfia_entry["code"],
-                "sfia_skill_name": sfia_entry["name"],
-                "sfia_category":   sfia_entry.get("category"),
-                "estimated_level": level,
+                "sfia_code":        sfia_entry["code"],
+                "sfia_skill_name":  sfia_entry["name"],
+                "sfia_category":    sfia_entry.get("category"),
+                "estimated_level":  level,
                 "confidence_score": confidence,
-                "evidence":        context[:3],  # top 3 supporting sentences
+                "evidence":         context[:3],
             })
 
+        logger.info("Mapped %d SFIA skill records", len(results))
         return results
+    
+    # ── Safe chunked NER runner ────────────────────────────────────
+    def _run_ner(self, ner_pipeline: Any, text: str) -> list[dict]:
+        """
+        Run NER on text, splitting into 300-word chunks automatically.
+        Returns merged entity list. Logs and skips failed chunks.
+        """
+        words = text.split()
+        chunks = [
+            " ".join(words[i:i + 300])
+            for i in range(0, len(words), 300)
+        ]
+        all_entities = []
+        for chunk in chunks:
+            if not chunk.strip():
+                continue
+            try:
+                all_entities.extend(ner_pipeline(chunk))
+            except Exception as e:
+                logger.warning("NER chunk failed: %s", e)
+        return all_entities
 
+
+    # ── SFIA matching ──────────────────────────────────────────────
     def _match_sfia_skill(self, skill_word: str) -> dict | None:
-        """Fuzzy match an extracted skill word to a SFIA v9 entry."""
         skill_lower = skill_word.lower()
         for entry in SFIA_SKILLS:
             keywords = [k.lower() for k in entry.get("keywords", [])]
