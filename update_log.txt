@@ -1,0 +1,28 @@
+# SFIA CV Platform - Commit Log
+
+## Date: 4/1/2026
+## Commit Hash:
+
+### Summary
+Improve whole parser_core function from entity detection, and skills starting to get detected
+
+### Changes Made
+- Changing NER model into yashpwr/resume-ner-bert-v2.Reason; More all around, and detect more decent from the previous model
+- Improve Entity Detection Script
+- Improve SFIA skill detection, with fuzzy matching. Consider using AI Gemini.
+
+
+### Files Modified
+- `parser_core.py`
+- `config.py`
+
+### Details
+- Satu CV sekitar 4-5 detik
+
+### Testing
+-
+
+### Additional Notes
+-
+
+---

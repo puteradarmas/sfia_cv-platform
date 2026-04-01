@@ -21,17 +21,17 @@ SFIA_LEVEL_HYPOTHESES = {
 SFIA_SKILLS = [
     # ── Development & Implementation ─────────────────────────────
     {"code": "PROG", "name": "Programming",            "category": "Development and Implementation", "keywords": ["programming", "coding", "software development", "python", "java", "javascript", "typescript", "go", "rust", "c++", "c#", "php", "ruby"]},
-    {"code": "SWDN", "name": "Software Design",        "category": "Development and Implementation", "keywords": ["software design", "system design", "architecture", "design patterns", "microservices", "api design"]},
+    {"code": "SWDN", "name": "Software Design",        "category": "Development and Implementation", "keywords": ["software design", "system design", "architecture", "design patterns", "microservices", "api design","relational database", "columnar", "nosql", "graph database","tigergraph", "query planning", "stored procedures","sql performance", "query optimization", "execution plan"]},
     {"code": "DBDS", "name": "Database Design",        "category": "Development and Implementation", "keywords": ["database design", "data modelling", "erd", "schema design", "sql", "relational database"]},
     {"code": "TEST", "name": "Testing",                "category": "Development and Implementation", "keywords": ["testing", "qa", "quality assurance", "unit test", "integration test", "pytest", "selenium"]},
     {"code": "DESN", "name": "Systems Design",         "category": "Development and Implementation", "keywords": ["systems design", "solution design", "technical design", "system architecture"]},
 
     # ── Data & Analytics ─────────────────────────────────────────
-    {"code": "DENG", "name": "Data Engineering",       "category": "Data and Analytics",            "keywords": ["data engineering", "etl", "elt", "pipeline", "airflow", "spark", "kafka", "data pipeline", "data warehouse", "medallion", "dbt"]},
+    {"code": "DENG", "name": "Data Engineering",       "category": "Data and Analytics",            "keywords": ["data engineering", "etl", "elt", "pipeline", "airflow", "spark", "kafka", "data pipeline", "data warehouse", "medallion", "dbt","etl pipeline", "etl framework", "talend", "pentaho", "pubsub","pub/sub", "pyspark", "data pipeline", "data integration","30m", "50m", "2b", "batch processing", "data ingestion","google data integration", "nifi", "apache nifi","machine learning", "machine learning development","model assessment", "model scoring", "neural network","time series", "tensorflow", "statistics", "statistical modeling"]},
     {"code": "DTAN", "name": "Data Science",           "category": "Data and Analytics",            "keywords": ["data science", "machine learning", "ml", "deep learning", "statistics", "sklearn", "tensorflow", "pytorch", "nlp", "data analysis", "pandas", "numpy"]},
     {"code": "BINT", "name": "Business Intelligence",  "category": "Data and Analytics",            "keywords": ["business intelligence", "bi", "power bi", "tableau", "looker", "dashboard", "reporting", "analytics"]},
     {"code": "DMAN", "name": "Data Management",        "category": "Data and Analytics",            "keywords": ["data management", "master data", "mdm", "data quality", "data stewardship"]},
-    {"code": "DGOV", "name": "Data Governance",        "category": "Data and Analytics",            "keywords": ["data governance", "data policy", "data standards", "satu data", "metadata management", "data catalog"]},
+    {"code": "DGOV", "name": "Data Governance",        "category": "Data and Analytics",            "keywords": ["data governance", "data policy", "data standards", "satu data", "metadata management", "data catalog","data governance", "data management and governance","data management", "data quality"]},
 
     # ── IT Management & Enterprise Architecture ───────────────────
     {"code": "ITSP", "name": "IT Strategy & Planning", "category": "IT Governance and Management",  "keywords": ["it strategy", "technology roadmap", "digital transformation", "strategic planning"]},
