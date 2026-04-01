@@ -23,6 +23,7 @@ Improve whole parser_core function from entity detection, and skills starting to
 -
 
 ### Additional Notes
--
+- Karena ada problem webserver gabisa diakses. Update Node Version dari host (WSL2) ke versi 20 via update nvm
+- bisa menjalankan '''npm create vite@latest . -- --template react-ts'''
 
 ---
