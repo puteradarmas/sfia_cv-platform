@@ -27,3 +27,18 @@ Improve whole parser_core function from entity detection, and skills starting to
 - bisa menjalankan '''npm create vite@latest . -- --template react-ts'''
 
 ---
+
+## Date: 4/2/2026
+## Commit Hash:
+
+### Summary
+The mock up for UI is ready and interactable
+
+### Changes Made
+- Correcting the way of importing other resources
+
+### Files Modified
+- all files under viewer docker app
+
+
+---
