@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, HTTPException, UploadFile, status,Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
@@ -172,18 +172,11 @@ async def parse_cv(file: UploadFile = File(...)):
 
 # ── Candidates ────────────────────────────────────────────────────
 @app.get("/candidates", response_model=list[CandidateOut], tags=["Candidates"])
-def list_candidates(status: str | None = None, skip: int = 0, limit: int = 50):
-    from database import SessionLocal
-    from sqlalchemy.orm import Session
-    db: Session = SessionLocal()
-    try:
+def list_candidates(status: str | None = None, skip: int = 0, limit: int = 50, db: Session = Depends(get_db),):
         q = db.query(Candidate)
         if status:
             q = q.join(SkillsProfile).filter(SkillsProfile.status == status.upper())
         return q.order_by(Candidate.uploaded_at.desc()).offset(skip).limit(limit).all()
-    finally:
-        db.close()
-
 
 @app.get("/candidates/{candidate_id}", response_model=CandidateOut, tags=["Candidates"])
 def get_candidate(candidate_id: int):
@@ -200,16 +193,13 @@ def get_candidate(candidate_id: int):
 
 # ── Profiles & Skill Validation ───────────────────────────────────
 @app.get("/profiles/{profile_id}", response_model=ProfileOut, tags=["Validation"])
-def get_profile(profile_id: int):
-    from database import SessionLocal
-    db = SessionLocal()
-    try:
+def get_profile(profile_id: int, db: Session = Depends(get_db),):
+
         p = db.query(SkillsProfile).filter(SkillsProfile.id == profile_id).first()
         if not p:
             raise HTTPException(status_code=404, detail="Profile not found.")
         return p
-    finally:
-        db.close()
+
 
 
 @app.patch("/profiles/{profile_id}/skills/{skill_id}", response_model=SkillRecordOut, tags=["Validation"])
