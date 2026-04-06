@@ -355,7 +355,7 @@ export default function PersonnelPage() {
             </div>
 
             {/* Skills profile */}
-            <div className="personnel-card">
+            <div className="personnel-card personnel-card-skills">
               <div className="card-header">
                 <h3 className="card-title">SFIA Skills Profile</h3>
                 {profile && <StatusBadge status={profile.status} size="md" />}

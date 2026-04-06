@@ -275,6 +275,7 @@ export default function UploadPage() {
                   <span className="rtcol-skill">SKILL</span>
                   <span className="rtcol-level">EST. LEVEL</span>
                   <span className="rtcol-conf">CONFIDENCE</span>
+                  <span className="rtcol-evidence">EVIDENCE</span>
                   <span className="rtcol-status">STATUS</span>
                   <span className="rtcol-actions">ACTIONS</span>
                 </div>
@@ -418,6 +419,23 @@ function SkillReviewRow({
         >
           {Math.round(skill.confidence_score * 100)}%
         </span>
+      </span>
+      <span className="rtcol-evidence">
+        {skill.evidence_text && (() => {
+          try {
+            const items = JSON.parse(skill.evidence_text) as string[]
+            return items.length > 0 ? (
+              <ul className="evidence-list">
+                {items.slice(0, 3).map((ev, i) => (
+                  <li key={i} className="evidence-item">{ev}</li>
+                ))}
+              </ul>
+            ) : <span className="evidence-empty">—</span>
+          } catch {
+            return <span className="evidence-text-raw">{skill.evidence_text}</span>
+          }
+        })()}
+        {!skill.evidence_text && <span className="evidence-empty">—</span>}
       </span>
       <span className="rtcol-status">
         <StatusBadge status={skill.validation_status} />
