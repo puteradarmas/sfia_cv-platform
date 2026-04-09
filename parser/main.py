@@ -52,7 +52,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten in production
+    allow_origins=["*"],  # tighten in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -174,10 +174,12 @@ async def parse_cv(file: UploadFile = File(...)):
 @app.get("/candidates", response_model=list[CandidateOut], tags=["Candidates"])
 def list_candidates(status: str | None = None, skip: int = 0, limit: int = 50):
     from database import SessionLocal
-    from sqlalchemy.orm import Session
+    from sqlalchemy.orm import Session, joinedload
     db: Session = SessionLocal()
     try:
-        q = db.query(Candidate)
+        q = db.query(Candidate).options(
+            joinedload(Candidate.profiles).joinedload(SkillsProfile.skill_records)
+        )
         if status:
             q = q.join(SkillsProfile).filter(SkillsProfile.status == status.upper())
         return q.order_by(Candidate.uploaded_at.desc()).offset(skip).limit(limit).all()
@@ -188,9 +190,14 @@ def list_candidates(status: str | None = None, skip: int = 0, limit: int = 50):
 @app.get("/candidates/{candidate_id}", response_model=CandidateOut, tags=["Candidates"])
 def get_candidate(candidate_id: int):
     from database import SessionLocal
+    from sqlalchemy.orm import joinedload
+    
     db = SessionLocal()
     try:
-        c = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        c = db.query(Candidate).options(
+            joinedload(Candidate.profiles).joinedload(SkillsProfile.skill_records)
+        ).filter(Candidate.id == candidate_id).first()
+        
         if not c:
             raise HTTPException(status_code=404, detail="Candidate not found.")
         return c

@@ -3,9 +3,9 @@ import type { Candidate } from '../types/types'
 interface Props {
   candidates: Candidate[]
   selected: Candidate | null
-  selectedIds: Set<string>
+  selectedIds: Set<number>
   onSelect: (c: Candidate) => void
-  onToggleId: (id: string) => void
+  onToggleId: (id: number) => void
   onToggleAll: () => void
   onBulkValidate: () => void
   onBulkReject: () => void
@@ -59,9 +59,10 @@ export default function CandidateList({
         {candidates.map(c => {
           const cfg = statusConfig[c.status]
           const isActive = selected?.id === c.id
-          const isChecked = selectedIds.has(c.id)
-          const avgConf = c.skills.length
-            ? Math.round((c.skills.reduce((s, sk) => s + sk.confidence, 0) / c.skills.length) * 100)
+          const isChecked = selectedIds.has(Number(c.id))
+          const safeSkills = c.skills || []
+          const avgConf = safeSkills.length > 0 
+            ? Math.round((safeSkills.reduce((s, sk) => s + sk.confidence, 0) / safeSkills.length) * 100)
             : 0
 
           return (
@@ -90,7 +91,7 @@ export default function CandidateList({
                 <div className="row-meta">
                   <span className="meta-role">{c.role}</span>
                   <span className="meta-dot">·</span>
-                  <span className="meta-skills">{c.skills.length} skills</span>
+                  <span className="meta-skills">{safeSkills.length} skills</span>
                   <span className="meta-dot">·</span>
                   <span className="meta-conf">
                     <ConfBar value={avgConf} />

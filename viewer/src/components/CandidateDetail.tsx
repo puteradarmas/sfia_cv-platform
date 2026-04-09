@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Candidate, SFIASkill, SkillLevel } from '../types/types'
-import { sfiaSkillDefinitions } from '../data/mockData'
+// import { sfiaSkillDefinitions } from '../data/mockData'
 import SkillRow from './SkillRow'
 import AddSkillModal from './AddSkillModal'
 

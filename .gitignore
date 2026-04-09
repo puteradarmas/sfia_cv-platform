@@ -61,3 +61,7 @@ scripts/certs/
 *.pem
 *.key
 *.crt
+
+# Testing tests
+test_clean.ps1
+test.ps1

@@ -1,0 +1,26 @@
+{
+  "name": "SFIA CV Platform",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "runServices": ["db", "parser", "viewer", "devcontainer"],
+  "shutdownAction": "stopCompose",
+  "postCreateCommand": "pip install -r /workspace/parser/requirements.txt && cd /workspace/viewer && npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylance",
+        "ms-vscode.vscode-typescript-next",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.extraPaths": ["/workspace/parser"],
+        "js/ts.tsdk.path": "/workspace/viewer/node_modules/typescript/lib",
+        "git.path": "usr/bin/git"
+      }
+    }
+  }
+}

@@ -1,14 +1,6 @@
 version: "3.9"
 
-# ─────────────────────────────────────────────────────────────────
-#  SFIA Skills Intelligence Platform  —  Development Environment
-#  Works on: Windows (Docker Desktop), macOS, Linux
-#  Usage:  docker compose up --build
-# ─────────────────────────────────────────────────────────────────
-
 services:
-
-  # ── PostgreSQL ──────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: sfia-db
@@ -32,7 +24,6 @@ services:
     networks:
       - sfia-net
 
-  # ── Parser API  (FastAPI + HuggingFace NLP) ─────────────────────
   parser:
     build:
       context: ./parser
@@ -40,20 +31,18 @@ services:
       target: development
     container_name: sfia-parser
     restart: unless-stopped
-    user: "1001:1001"          # ← FIX: run as appuser from the start
+    user: "1001:1001"
     environment:
-      DATABASE_URL:    postgresql://${DB_USER:-sfiauser}:${DB_PASSWORD:-sfiapass}@db:5432/${DB_NAME:-sfiadb}
+      DATABASE_URL:    postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       APP_ENV:         development
       LOG_LEVEL:       ${LOG_LEVEL:-info}
       HF_HOME:         /cache/huggingface
       TRANSFORMERS_CACHE: /cache/huggingface
-      # Prevents HuggingFace from sending telemetry
       TRANSFORMERS_OFFLINE: "0"
     volumes:
-      # Hot-reload: source code synced into container
       - ./parser:/app:delegated
-      # HuggingFace model cache — survives rebuilds
       - hf_cache:/cache/huggingface
+      # REMOVED: - .:/workspace  (this was causing conflicts)
     ports:
       - "${PARSER_PORT:-8000}:8000"
     depends_on:
@@ -61,7 +50,6 @@ services:
         condition: service_healthy
     networks:
       - sfia-net
-    # Give the parser extra time — first run downloads ~1.3GB of models
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 15s
@@ -69,20 +57,19 @@ services:
       retries: 10
       start_period: 120s
 
-  # ── Viewer  (React + Vite) ──────────────────────────────────────
   viewer:
     build:
       context: ./viewer
       dockerfile: Dockerfile
       target: development
+      args:
+        VITE_API_URL: http://localhost:${PARSER_PORT:-8000}  # ✅ FIXED syntax
     container_name: sfia-viewer
     restart: unless-stopped
     environment:
       VITE_API_URL: http://localhost:${PARSER_PORT:-8000}
     volumes:
-      # Hot-reload: source code synced into container
       - ./viewer:/app:delegated
-      # Isolate node_modules inside container (avoids Windows path issues)
       - viewer_node_modules:/app/node_modules
     ports:
       - "${VIEWER_PORT:-5173}:5173"
@@ -91,7 +78,21 @@ services:
     networks:
       - sfia-net
 
-# ── Named volumes ───────────────────────────────────────────────
+  devcontainer:
+      build:
+        context: .
+        dockerfile: .devcontainer/Dockerfile
+      container_name: sfia-devcontainer
+      volumes:
+        - .:/workspace
+      command: sleep infinity
+      depends_on:
+        - db
+        - parser
+        - viewer
+      networks:
+        - sfia-net
+
 volumes:
   pgdata:
     name: sfia-pgdata
@@ -100,7 +101,6 @@ volumes:
   viewer_node_modules:
     name: sfia-viewer-modules
 
-# ── Internal network ─────────────────────────────────────────────
 networks:
   sfia-net:
     name: sfia-network

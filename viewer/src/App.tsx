@@ -1,30 +1,66 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CandidateList from './components/CandidateList'
 import CandidateDetail from './components/CandidateDetail'
-import type { Candidate } from './types/types'
-import { mockCandidates } from './data/mockData'
+import type { APICandidate, APISkillRecord, Candidate, SFIASkill, ValidationStatus } from './types/types'
+import { sfia_service } from './data/serviceData'
+import { transformCandidate } from './helper/candidateshelper'
+// import { mockCandidates } from './data/mockData'
 
 export default function App() {
-  const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selected, setSelected] = useState<Candidate | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [loading, setLoading] = useState(true)
 
-  const updateCandidate = (updated: Candidate) => {
-    setCandidates(prev => prev.map(c => c.id === updated.id ? updated : c))
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        const rawData: APICandidate[] = await sfia_service.getCandidates()
+        if (Array.isArray(rawData)) {
+          const formattedCandidates = rawData.map(data => transformCandidate(data))
+          setCandidates(formattedCandidates)
+        }
+      } catch (error) {
+        console.error("Failed to fetch the Candidates: ", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCandidates()
+  }, [])
+
+  const updateCandidate = async (updated: Candidate) => {
+    const ListOfCandidate: Candidate[] = await sfia_service.getCandidates()
+    setCandidates(ListOfCandidate.map(
+      prev => prev.id === updated.id ? updated : prev
+    ))
     setSelected(updated)
   }
 
+  const selectCandidatebyID = async (basicCandidate: Candidate) => {
+    try {
+      const GetCandidateByID = await sfia_service.getCandidatesByID(basicCandidate.id)
+      const detailedCand = transformCandidate(GetCandidateByID)
+
+      setSelected(detailedCand)
+    } catch (error) {
+      console.error("Error: ", error)
+      setSelected(basicCandidate)
+    }
+  }
+
   const bulkValidate = () => {
-    const next = candidates.map(c =>
-      selectedIds.has(c.id) ? { ...c, status: 'validated' as const } : c
+    const next = candidates.map((c: Candidate) =>
+      selectedIds.has(Number(c.id) as number) ? { ...c, status: 'validated' as const } : c
     )
     setCandidates(next)
     setSelectedIds(new Set())
   }
 
   const bulkReject = () => {
-    const next = candidates.map(c =>
-      selectedIds.has(c.id) ? { ...c, status: 'rejected' as const } : c
+    const next = candidates.map((c: Candidate) =>
+      selectedIds.has(Number(c.id) as number) ? { ...c, status: 'rejected' as const } : c
     )
     setCandidates(next)
     setSelectedIds(new Set())
@@ -42,26 +78,35 @@ export default function App() {
         </div>
         <div className="header-stats">
           <Stat label="Total" value={candidates.length} />
-          <Stat label="Validated" value={candidates.filter(c => c.status === 'validated').length} accent="green" />
-          <Stat label="Pending" value={candidates.filter(c => c.status === 'pending').length} accent="amber" />
-          <Stat label="Rejected" value={candidates.filter(c => c.status === 'rejected').length} accent="red" />
+          <Stat label="Validated" value={candidates.filter((c: { status: string }) => c.status === 'validated').length} accent="green" />
+          <Stat label="Pending" value={candidates.filter((c: { status: string }) => c.status === 'pending').length} accent="amber" />
+          <Stat label="Rejected" value={candidates.filter((c: { status: string }) => c.status === 'rejected').length} accent="red" />
         </div>
       </header>
 
+      {loading ? (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          Loading Candidates ...
+        </div>
+      ) : (
       <main className="app-main">
         <CandidateList
           candidates={candidates}
           selected={selected}
           selectedIds={selectedIds}
-          onSelect={setSelected}
-          onToggleId={(id) => setSelectedIds(prev => {
+          onSelect={selectCandidatebyID}
+          onToggleId={(id: number) => setSelectedIds((prev: Set<number>) => {
             const next = new Set(prev)
-            next.has(id) ? next.delete(id) : next.add(id)
+            if (next.has(id)) {
+              next.delete(id)
+            } else {
+              next.add(id)
+            }
             return next
           })}
           onToggleAll={() => {
             if (selectedIds.size === candidates.length) setSelectedIds(new Set())
-            else setSelectedIds(new Set(candidates.map(c => c.id)))
+            else setSelectedIds(new Set(candidates.map((c: Candidate) => c.id)))
           }}
           onBulkValidate={bulkValidate}
           onBulkReject={bulkReject}
@@ -71,6 +116,7 @@ export default function App() {
           onUpdate={updateCandidate}
         />
       </main>
+      )}
     </div>
   )
 }
