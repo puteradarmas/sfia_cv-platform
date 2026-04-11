@@ -11,7 +11,7 @@ interface Props {
   onBulkReject: () => void
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string, cls: string }> = {
   pending:   { label: 'PENDING',   cls: 'badge-amber' },
   validated: { label: 'VALIDATED', cls: 'badge-green' },
   rejected:  { label: 'REJECTED',  cls: 'badge-red' },
@@ -57,9 +57,12 @@ export default function CandidateList({
       {/* Candidate rows */}
       <div className="candidate-rows">
         {candidates.map(c => {
-          const cfg = statusConfig[c.status]
+          const safeStatus = (c.status || 'pending').toLowerCase()
+
+          const cfg = statusConfig[safeStatus] || statusConfig.pending
           const isActive = selected?.id === c.id
           const isChecked = selectedIds.has(Number(c.id))
+
           const safeSkills = c.skills || []
           const avgConf = safeSkills.length > 0 
             ? Math.round((safeSkills.reduce((s, sk) => s + sk.confidence, 0) / safeSkills.length) * 100)

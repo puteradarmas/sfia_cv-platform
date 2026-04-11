@@ -4,6 +4,7 @@ export type ValidationStatus = 'pending' | 'validated' | 'rejected'
 
 export interface SFIASkill {
   id: string
+  profileId?: number
   code: string           // e.g. "DTAN"
   name: string           // e.g. "Data Analytics"
   category: string       // e.g. "Data and Analytics"
@@ -16,6 +17,7 @@ export interface SFIASkill {
 
 export interface Candidate {
   id: number
+  profileId?: number
   name: string
   email: string
   role: string

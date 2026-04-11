@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { Candidate, SFIASkill, SkillLevel } from '../types/types'
+import type { Candidate, SFIASkill, SkillRecordPatch } from '../types/types'
 // import { sfiaSkillDefinitions } from '../data/mockData'
 import SkillRow from './SkillRow'
 import AddSkillModal from './AddSkillModal'
+import { sfia_service } from '../data/serviceData'
 
 interface Props {
   candidate: Candidate | null
@@ -22,15 +23,38 @@ export default function CandidateDetail({ candidate, onUpdate }: Props) {
     )
   }
 
-  const handleValidate = () => onUpdate({ ...candidate, status: 'validated' })
+  const handleValidate = async () => {
+    if (!candidate.profileId) return
+
+    try {
+      await sfia_service.approveProfile(candidate.profileId, "ReviewerName")
+      onUpdate({ ...candidate, status: 'validated' })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to Validate the Profile")
+    }
+  }
   const handleReject = () => onUpdate({ ...candidate, status: 'rejected' })
   const handleReset = () => onUpdate({ ...candidate, status: 'pending' })
 
-  const handleSkillUpdate = (updated: SFIASkill) => {
-    onUpdate({
-      ...candidate,
-      skills: candidate.skills.map(s => s.id === updated.id ? updated : s)
-    })
+  const handleSkillUpdate = async (updated: SFIASkill) => {
+    if (!candidate.profileId) return
+
+    try {
+      const payload: SkillRecordPatch = {
+        validated_level: updated.level,
+        validation_status: 'CORRECTED',
+        validator_note: updated.notes || "Updated by Reviewer",
+        actor: 'ReviewerName'
+      }
+
+      await sfia_service.validateSkill(candidate.profileId, Number(updated.id), payload)
+      onUpdate({
+        ...candidate,
+        skills: candidate.skills.map(s => s.id === updated.id ? updated : s)
+      })
+    } catch (error) {
+      alert("Failed to save the Skills: " + error)
+    }
   }
 
   const handleSkillDelete = (id: string) => {

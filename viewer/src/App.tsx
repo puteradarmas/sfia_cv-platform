@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import CandidateList from './components/CandidateList'
 import CandidateDetail from './components/CandidateDetail'
-import type { APICandidate, APISkillRecord, Candidate, SFIASkill, ValidationStatus } from './types/types'
+import type { APICandidate, Candidate, ValidationStatus } from './types/types'
 import { sfia_service } from './data/serviceData'
 import { transformCandidate } from './helper/candidateshelper'
 // import { mockCandidates } from './data/mockData'
@@ -50,11 +50,23 @@ export default function App() {
     }
   }
 
-  const bulkValidate = () => {
-    const next = candidates.map((c: Candidate) =>
-      selectedIds.has(Number(c.id) as number) ? { ...c, status: 'validated' as const } : c
-    )
-    setCandidates(next)
+  const bulkValidate = async () => {
+    const candidatesToApprove = candidates.filter(c => selectedIds.has(Number(c.id)))
+
+    for (const c of candidatesToApprove) {
+      if (c.profileId) {
+        try {
+          await sfia_service.approveProfile(c.profileId, "Reviewer")
+          setCandidates(prev => prev.map(cand =>
+            cand.id === c.id ? { ...cand, status: 'validated' as ValidationStatus } : cand
+          ))
+        } catch (error) {
+          alert("Failed to Bulk Validate")
+          console.error("Failed to Validate the Candidates: ", error)
+        }
+      }
+    }
+
     setSelectedIds(new Set())
   }
 

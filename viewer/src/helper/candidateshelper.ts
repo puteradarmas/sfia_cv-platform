@@ -19,6 +19,7 @@ export const transformCandidate = (data: APICandidate): Candidate => {
 
     return {
         id: data.id,
+        profileId: profile ? profile.id : undefined,
         name: data.full_name || 'Unknown',
         email: data.email || '',
         role: data.role || 'Data Role',
